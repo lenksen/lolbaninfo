@@ -153,12 +153,12 @@ function isValidQQ(qq: string): boolean {
 // ===================== 5. 插件核心逻辑 =====================
 // 修复：apply函数添加第二个参数 config，接收插件配置
 export function apply(ctx: Context, config: Config) {
-  ctx.inject(['console'], (ctx) => {
-    ctx.console.addEntry({
-      dev: resolve(__dirname, '../client/index.ts'),
-      prod: resolve(__dirname, '../dist'),
-    })
-  })
+//   ctx.inject(['console'], (ctx) => {
+//     ctx.console.addEntry({
+//       dev: resolve(__dirname, '../client/index.ts'),
+//       prod: resolve(__dirname, '../dist'),
+//     })
+//   })
 
   // 创建插件专属日志实例
   const logger = ctx.logger(name)
