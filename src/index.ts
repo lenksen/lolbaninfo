@@ -64,15 +64,6 @@ function addLogAndClean(logger: Logger, content: string, maxCount: number): void
   }
 }
 
-/**
- * 获取当前日志缓存
- * @returns 格式化后的日志列表
- */
-function getLogCache(): string {
-  return logCache.length === 0 
-    ? '当前暂无日志记录' 
-    : `当前日志共${logCache.length}条：\n${logCache.join('\n')}`
-}
 
 // ===================== 3. API请求模块 =====================
 /**
@@ -199,8 +190,4 @@ export function apply(ctx: Context, config: Config) {
         return `⚠️  接口调用出错：${errMsg}`
       }
     })
-
-  // 指令2：查看当前日志缓存
-  ctx.command('查看查号日志', '查看插件当前的日志缓存')
-    .action(() => getLogCache())
 }
