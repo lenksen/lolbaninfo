@@ -9,7 +9,7 @@
     "dist"
   ],
   "license": "MIT",
-  "scripts": {},
+  "homepage": "https://example.com",
   "keywords": [
     "chatbot",
     "koishi",
