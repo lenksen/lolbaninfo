@@ -8,11 +8,17 @@
     "lib",
     "dist"
   ],
+  "repository": {
+  "type": "git",
+  "url": "git+https://github.com/lenksen/lolbaninfo"
+  },
   "license": "MIT",
-  "homepage": "https://example.com",
+  "homepage": "https://github.com/lenksen/lolbaninfo",
   "keywords": [
     "chatbot",
     "koishi",
+    "封号查询",
+    "英雄联盟",
     "plugin"
   ],
   "devDependencies": {
