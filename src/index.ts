@@ -77,7 +77,8 @@ export interface Config {
 export const Config: Schema<Config> = Schema.object({
   apiUrl: Schema.string()
     .description('目标网站的API接口地址')
-    .default('https://yun.4png.com/api/query.html    '),
+    .default('https://yun.4png.com/api/query.html')
+    .required(),
   apiToken: Schema.string()
     .description('网站API的访问Token（注册即可获得）')
     .required(),
@@ -217,7 +218,7 @@ function formatReplyMessage(session: any, message: string, config: Config): stri
   let prefix = '';
   // @用户 [[1]]
   if (config.replyMode === ReplyMode.MENTION) {
-    prefix = h.at(session.userId).toString(); // 使用 h.at 构建 @ 元素并转为字符串
+    prefix = h.at(session.userId).toString() + '\n'; // 使用 h.at 构建 @ 元素并转为字符串 + 换行符
   }
   // 引用回复 [[1]]
   if (config.replyMode === ReplyMode.QUOTE) {
