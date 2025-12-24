@@ -14,11 +14,27 @@ export interface Config {
 export const usage = `
 # ⚠️ LOL封号查询插件 ⚠️
 无需密码，直接根据QQ号查询账号封禁状态与详细信息
+# 📢 功能特点
+- 支持通过QQ号快速查询LOL账号封禁状态
+- 自动重试机制，提高查询成功率
+- 日志自动清理，避免日志过多占用内存
+- 简单易用的指令操作，适合各类用户
+# 🛠️ 配置说明
+- apiUrl: 目标网站的API接口地址，通常无需修改
+- apiToken: 网站API的访问Token（注册即可获得）
+- retryTimes: 请求失败时的最大重试次数，建议设置为2-3次
+- retryDelay: 每次重试的间隔时间（毫秒），建议设置为1000-2000ms
+- maxLogCount: 日志自动清理阈值（最大存储条数），建议设置为100-200条
+# 💡 使用指令
+- 查封号 <qq号>：查询指定QQ号的LOL封禁状态
+# 📄 注意事项
+- 请确保提供的API Token有效且有查询权限
+- 本插件仅供查询封禁状态，请勿用于其他用途
 `
 
 export const Config: Schema<Config> = Schema.object({
   apiUrl: Schema.string()
-    .description('目标网站的API接口地址（固定为文档地址）')
+    .description('目标网站的API接口地址')
     .default('https://yun.4png.com/api/query.html'),
   apiToken: Schema.string()
     .description('网站API的访问Token（注册即可获得）')
