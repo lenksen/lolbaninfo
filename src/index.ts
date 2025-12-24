@@ -7,7 +7,7 @@ export const usage =
 # ⚠️ LOL封号查询插件 ⚠️
 - **此插件作者只是制作工具，网站API及其内容均与作者无关，请合理使用**
 - 无需密码，直接根据QQ号查询账号封禁状态与详细信息
-
+- 注册网站：https://yun.4png.com/
 ---
 
 <details>
@@ -63,48 +63,66 @@ export enum ReplyMode {
   NORMAL = 'normal',    // 普通回复
 }
 
-// 配置接口
+// 配置接口 - 使用嵌套结构进行分类
 export interface Config {
-  apiUrl: string               // 目标API地址，固定为文档地址
-  apiToken: string             // API访问Token（注册获取）
-  retryTimes: number           // Token失效最大重试次数
-  retryDelay: number           // 重试间隔（毫秒）
-  maxLogCount: number          // 日志自动清理阈值
-  replyMode: ReplyMode         // 新增：回复模式
+  api: {
+    apiUrl: string               // 目标API地址
+    apiToken: string             // API访问Token
+  };
+  reply: {
+    replyMode: ReplyMode         // 回复模式
+  };
+  retry: {
+    retryTimes: number           // 最大重试次数
+    retryDelay: number           // 重试间隔（毫秒）
+  };
+  log: {                        // 新增：日志配置分类
+    maxLogCount: number;         // 日志自动清理阈值
+  };
 }
 
-// ===================== 1. 配置模块 =====================
-export const Config: Schema<Config> = Schema.object({
-  apiUrl: Schema.string()
-    .description('目标网站的API接口地址')
-    .default('https://yun.4png.com/api/query.html')
-    .required(),
-  apiToken: Schema.string()
-    .description('网站API的访问Token（注册即可获得）')
-    .required(),
-  replyMode: Schema.union([ // 新增配置项
-    Schema.const(ReplyMode.MENTION).description('使用 @ 用户进行回复'),
-    Schema.const(ReplyMode.QUOTE).description('使用引用进行回复'),
-    Schema.const(ReplyMode.NORMAL).description('保持普通回复'),
-  ])
-  .description('机器人回复消息的方式')
-  .default(ReplyMode.NORMAL), // 默认为普通模式
-  retryTimes: Schema.number()
-    .description('请求失败时的最大重试次数')
-    .default(2)
-    .min(0)
-    .max(5),
-  retryDelay: Schema.number()
-    .description('每次重试的间隔时间（毫秒）')
-    .default(1000)
-    .min(500)
-    .max(5000),
-  maxLogCount: Schema.number()
-    .description('日志自动清理阈值（最大存储条数）')
-    .default(100)
-    .min(20)
-    .max(500),
-})
+// ===================== 1. 配置模块 (分类) =====================
+export const Config: Schema<Config> = Schema.intersect([ // 使用 intersect 来组合多个对象
+  Schema.object({
+    api: Schema.object({
+      apiUrl: Schema.string()
+        .description('目标网站的API接口地址')
+        .default('https://yun.4png.com/api/query.html'),
+        // .required(), // 移除 .required()，因为有默认值
+      apiToken: Schema.string()
+        .description('网站API的访问Token（注册即可获得）')
+        .required(), // 这个是真正需要用户输入的
+    }).description('API 设置'), // API 相关配置的分组描述
+    reply: Schema.object({
+      replyMode: Schema.union([
+        Schema.const(ReplyMode.MENTION).description('使用 @ 用户进行回复'),
+        Schema.const(ReplyMode.QUOTE).description('使用引用进行回复'),
+        Schema.const(ReplyMode.NORMAL).description('保持普通回复'),
+      ])
+      .description('机器人回复消息的方式')
+      .default(ReplyMode.NORMAL), // 默认为普通模式
+    }).description('回复 设置'), // 回复相关配置的分组描述
+    retry: Schema.object({
+      retryTimes: Schema.number()
+        .description('请求失败时的最大重试次数')
+        .default(2)
+        .min(0)
+        .max(5),
+      retryDelay: Schema.number()
+        .description('每次重试的间隔时间（毫秒）')
+        .default(1000)
+        .min(500)
+        .max(5000),
+    }).description('重试 设置'), // 重试相关配置的分组描述
+    log: Schema.object({ // 新增日志配置分组
+      maxLogCount: Schema.number()
+        .description('日志自动清理阈值（最大存储条数）')
+        .default(100)
+        .min(20)
+        .max(500),
+    }).description('日志 设置'), // 日志相关配置的分组描述
+  })
+]);
 
 // ===================== 2. 日志管理模块 =====================
 /** 内存日志缓存 */
@@ -143,30 +161,33 @@ function addLogAndClean(
  */
 async function requestWithRetry(
   ctx: Context,
-  config: Config,
+  config: Config, // 配置类型已更新
   qq: string,
   logger: Logger // 修正类型为 Logger
 ): Promise<any> {
   let attempt = 0
+  const { apiUrl, apiToken } = config.api; // 从嵌套配置中解构
+  const { retryTimes, retryDelay } = config.retry; // 从嵌套配置中解构
+  const { maxLogCount } = config.log; // 从嵌套配置中解构日志配置
 
-  while (attempt <= config.retryTimes) {
+  while (attempt <= retryTimes) { // 使用解构后的值
     try {
-      const requestLog = `[第${attempt + 1}次请求] 开始查询QQ：${qq}，目标API：${config.apiUrl}`
-      addLogAndClean(logger, requestLog, config.maxLogCount)
+      const requestLog = `[第${attempt + 1}次请求] 开始查询QQ：${qq}，目标API：${apiUrl}` // 使用解构后的值
+      addLogAndClean(logger, requestLog, maxLogCount) // 使用解构后的日志配置值
       logger.info(requestLog)
 
       // 关键修改：GET请求，参数拼在URL上（符合文档要求）
-      const response = await ctx.http.get(config.apiUrl, {
+      const response = await ctx.http.get(apiUrl, { // 使用解构后的值
         params: {
           qq: qq,
-          token: config.apiToken
+          token: apiToken // 使用解构后的值
         },
         // 强制解析JSON，避免返回文本格式
         responseType: 'json'
       })
 
       const successLog = `[第${attempt + 1}次请求] 查询成功，返回状态码：200`
-      addLogAndClean(logger, successLog, config.maxLogCount)
+      addLogAndClean(logger, successLog, maxLogCount) // 使用解构后的日志配置值
       logger.success(successLog)
 
       return response
@@ -174,23 +195,23 @@ async function requestWithRetry(
       attempt++
       const status = error.response?.status || '未知状态'
       const failLog = `[第${attempt}次请求] 失败，状态码：${status}，错误信息：${error.message}`
-      addLogAndClean(logger, failLog, config.maxLogCount)
+      addLogAndClean(logger, failLog, maxLogCount) // 使用解构后的日志配置值
       logger.warn(failLog)
 
       // 仅对参数/权限类错误（400/403）进行重试
       const isRetryable = [400, 403].includes(status)
-      if (!isRetryable || attempt > config.retryTimes) {
-        const endLog = `[请求终止] 非重试错误或已达最大重试次数(${config.retryTimes}次)`
-        addLogAndClean(logger, endLog, config.maxLogCount)
+      if (!isRetryable || attempt > retryTimes) { // 使用解构后的值
+        const endLog = `[请求终止] 非重试错误或已达最大重试次数(${retryTimes}次)` // 使用解构后的值
+        addLogAndClean(logger, endLog, maxLogCount) // 使用解构后的日志配置值
         logger.error(endLog)
         throw error
       }
 
-      const retryLog = `[准备重试] 间隔${config.retryDelay}ms后进行第${attempt}次重试`
-      addLogAndClean(logger, retryLog, config.maxLogCount)
+      const retryLog = `[准备重试] 间隔${retryDelay}ms后进行第${attempt}次重试` // 使用解构后的值
+      addLogAndClean(logger, retryLog, maxLogCount) // 使用解构后的日志配置值
       logger.info(retryLog)
 
-      await sleep(config.retryDelay)
+      await sleep(retryDelay) // 使用解构后的值
     }
   }
 
@@ -217,11 +238,11 @@ function isValidQQ(qq: string): boolean {
 function formatReplyMessage(session: any, message: string, config: Config): string {
   let prefix = '';
   // @用户 [[1]]
-  if (config.replyMode === ReplyMode.MENTION) {
+  if (config.reply.replyMode === ReplyMode.MENTION) { // 从嵌套配置中获取 replyMode
     prefix = h.at(session.userId).toString() + '\n'; // 使用 h.at 构建 @ 元素并转为字符串 + 换行符
   }
   // 引用回复 [[1]]
-  if (config.replyMode === ReplyMode.QUOTE) {
+  if (config.reply.replyMode === ReplyMode.QUOTE) { // 从嵌套配置中获取 replyMode
     prefix = h.quote(session.messageId).toString(); // 使用 h.quote 构建引用元素并转为字符串
   }
   // 普通回复 (config.replyMode === ReplyMode.NORMAL) 不添加前缀
@@ -241,7 +262,7 @@ export function apply(ctx: Context, config: Config) {
       // 1. QQ号格式校验
       if (!isValidQQ(qq)) {
         const errMsg = `QQ号格式错误：${qq}（需5-13位数字）`
-        addLogAndClean(logger, errMsg, config.maxLogCount)
+        addLogAndClean(logger, errMsg, config.log.maxLogCount) // 从嵌套配置中获取日志配置值
         logger.warn(errMsg)
         // 使用格式化函数发送回复
         return formatReplyMessage(session, `❌ ${errMsg}`, config);
@@ -249,7 +270,7 @@ export function apply(ctx: Context, config: Config) {
 
       try {
         // 2. 发送带重试的GET请求
-        const result = await requestWithRetry(ctx, config, qq, logger)
+        const result = await requestWithRetry(ctx, config, qq, logger) // requestWithRetry 函数已更新
         const msg = result.msg || '无返回信息'
 
         // 3. 处理API返回结果（适配文档的code和data字段）
@@ -257,19 +278,19 @@ export function apply(ctx: Context, config: Config) {
           case 200:
             const banInfo = result.data?.banmsg || '无详细封禁信息'
             const successResLog = `[查询结果] QQ${qq}：${msg} → ${banInfo}`
-            addLogAndClean(logger, successResLog, config.maxLogCount)
+            addLogAndClean(logger, successResLog, config.log.maxLogCount) // 从嵌套配置中获取日志配置值
             logger.success(successResLog)
             // 使用格式化函数发送回复
             return formatReplyMessage(session, `✅ 查询成功：${msg}\n📝 详细信息：${banInfo}`, config);
           case 400:
             const warnResLog = `[查询结果] QQ${qq} 400错误：${msg}`
-            addLogAndClean(logger, warnResLog, config.maxLogCount)
+            addLogAndClean(logger, warnResLog, config.log.maxLogCount) // 从嵌套配置中获取日志配置值
             logger.warn(warnResLog)
             // 使用格式化函数发送回复
             return formatReplyMessage(session, `❌ 查询失败 [错误码400]：${msg}（参数缺失，请检查配置）`, config);
           default:
             const infoResLog = `[查询结果] QQ${qq} 错误码${result.code}：${msg}`
-            addLogAndClean(logger, infoResLog, config.maxLogCount)
+            addLogAndClean(logger, infoResLog, config.log.maxLogCount) // 从嵌套配置中获取日志配置值
             logger.info(infoResLog)
             // 使用格式化函数发送回复
             return formatReplyMessage(session, `❌ 查询失败 [错误码${result.code}]：${msg}`, config);
@@ -277,7 +298,7 @@ export function apply(ctx: Context, config: Config) {
       } catch (error: any) {
         const errMsg = error.message || '未知错误'
         const errorLog = `[接口调用出错] QQ${qq}：${errMsg}`
-        addLogAndClean(logger, errorLog, config.maxLogCount)
+        addLogAndClean(logger, errorLog, config.log.maxLogCount) // 从嵌套配置中获取日志配置值
         logger.error(errorLog)
         // 使用格式化函数发送回复
         return formatReplyMessage(session, `⚠️  接口调用出错：${errMsg}`, config);
