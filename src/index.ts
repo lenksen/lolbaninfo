@@ -1,15 +1,6 @@
-import { Context, Schema, Logger, sleep } from 'koishi' 
+import { Context, Schema, Logger, sleep, h } from 'koishi' // 导入 h 函数用于构建元素
 
 export const name = 'lolbaninfo'
-
-// 配置接口
-export interface Config {
-  apiUrl: string               // 目标API地址，固定为文档地址
-  apiToken: string             // API访问Token（注册获取）
-  retryTimes: number           // Token失效最大重试次数
-  retryDelay: number           // 重试间隔（毫秒）
-  maxLogCount: number          // 日志自动清理阈值
-}
 
 export const usage = 
 `
@@ -65,14 +56,38 @@ export const usage =
 </details>
 `
 
+// 回复方式枚举
+export enum ReplyMode {
+  MENTION = 'mention',  // @用户
+  QUOTE = 'quote',      // 引用回复
+  NORMAL = 'normal',    // 普通回复
+}
+
+// 配置接口
+export interface Config {
+  apiUrl: string               // 目标API地址，固定为文档地址
+  apiToken: string             // API访问Token（注册获取）
+  retryTimes: number           // Token失效最大重试次数
+  retryDelay: number           // 重试间隔（毫秒）
+  maxLogCount: number          // 日志自动清理阈值
+  replyMode: ReplyMode         // 新增：回复模式
+}
+
 // ===================== 1. 配置模块 =====================
 export const Config: Schema<Config> = Schema.object({
   apiUrl: Schema.string()
     .description('目标网站的API接口地址')
-    .default('https://yun.4png.com/api/query.html'),
+    .default('https://yun.4png.com/api/query.html    '),
   apiToken: Schema.string()
     .description('网站API的访问Token（注册即可获得）')
     .required(),
+  replyMode: Schema.union([ // 新增配置项
+    Schema.const(ReplyMode.MENTION).description('使用 @ 用户进行回复'),
+    Schema.const(ReplyMode.QUOTE).description('使用引用进行回复'),
+    Schema.const(ReplyMode.NORMAL).description('保持普通回复'),
+  ])
+  .description('机器人回复消息的方式')
+  .default(ReplyMode.NORMAL), // 默认为普通模式
   retryTimes: Schema.number()
     .description('请求失败时的最大重试次数')
     .default(2)
@@ -87,7 +102,7 @@ export const Config: Schema<Config> = Schema.object({
     .description('日志自动清理阈值（最大存储条数）')
     .default(100)
     .min(20)
-    .max(500)
+    .max(500),
 })
 
 // ===================== 2. 日志管理模块 =====================
@@ -101,8 +116,8 @@ const logCache: string[] = []
  * @param maxCount 最大日志存储条数
  */
 function addLogAndClean(
-  logger:Logger, 
-  content: string, 
+  logger: Logger,
+  content: string,
   maxCount: number
 ): void {
   const formattedLog = `[${new Date().toLocaleString()}] ${content}`
@@ -115,7 +130,6 @@ function addLogAndClean(
     logger.info(`[日志清理] 已删除${deleteCount}条旧日志，当前保留${logCache.length}条`)
   }
 }
-
 
 // ===================== 3. API请求模块 =====================
 /**
@@ -192,6 +206,27 @@ function isValidQQ(qq: string): boolean {
   return /^\d{5,13}$/.test(qq)
 }
 
+/**
+ * 根据配置和会话信息，生成带有前缀的消息字符串
+ * @param session Koishi会话对象
+ * @param message 要发送的原始消息内容
+ * @param config 插件配置
+ * @returns 处理后的消息字符串
+ */
+function formatReplyMessage(session: any, message: string, config: Config): string {
+  let prefix = '';
+  // @用户 [[1]]
+  if (config.replyMode === ReplyMode.MENTION) {
+    prefix = h.at(session.userId).toString(); // 使用 h.at 构建 @ 元素并转为字符串
+  }
+  // 引用回复 [[1]]
+  if (config.replyMode === ReplyMode.QUOTE) {
+    prefix = h.quote(session.messageId).toString(); // 使用 h.quote 构建引用元素并转为字符串
+  }
+  // 普通回复 (config.replyMode === ReplyMode.NORMAL) 不添加前缀
+  return prefix + message;
+}
+
 // ===================== 5. 插件核心逻辑 =====================
 // 修复：apply函数添加第二个参数 config，接收插件配置
 export function apply(ctx: Context, config: Config) {
@@ -201,13 +236,14 @@ export function apply(ctx: Context, config: Config) {
 
   // 指令1：查询QQ号状态
   ctx.command('查封号 <qq号>', '查询QQ号封号状态')
-    .action(async (_, qq) => {
+    .action(async ({ session }, qq) => { // 从 action 回调中解构出 session
       // 1. QQ号格式校验
       if (!isValidQQ(qq)) {
         const errMsg = `QQ号格式错误：${qq}（需5-13位数字）`
         addLogAndClean(logger, errMsg, config.maxLogCount)
         logger.warn(errMsg)
-        return `❌ ${errMsg}`
+        // 使用格式化函数发送回复
+        return formatReplyMessage(session, `❌ ${errMsg}`, config);
       }
 
       try {
@@ -222,24 +258,28 @@ export function apply(ctx: Context, config: Config) {
             const successResLog = `[查询结果] QQ${qq}：${msg} → ${banInfo}`
             addLogAndClean(logger, successResLog, config.maxLogCount)
             logger.success(successResLog)
-            return `✅ 查询成功：${msg}\n📝 详细信息：${banInfo}`
+            // 使用格式化函数发送回复
+            return formatReplyMessage(session, `✅ 查询成功：${msg}\n📝 详细信息：${banInfo}`, config);
           case 400:
             const warnResLog = `[查询结果] QQ${qq} 400错误：${msg}`
             addLogAndClean(logger, warnResLog, config.maxLogCount)
             logger.warn(warnResLog)
-            return `❌ 查询失败 [错误码400]：${msg}（参数缺失，请检查配置）`
+            // 使用格式化函数发送回复
+            return formatReplyMessage(session, `❌ 查询失败 [错误码400]：${msg}（参数缺失，请检查配置）`, config);
           default:
             const infoResLog = `[查询结果] QQ${qq} 错误码${result.code}：${msg}`
             addLogAndClean(logger, infoResLog, config.maxLogCount)
             logger.info(infoResLog)
-            return `❌ 查询失败 [错误码${result.code}]：${msg}`
+            // 使用格式化函数发送回复
+            return formatReplyMessage(session, `❌ 查询失败 [错误码${result.code}]：${msg}`, config);
         }
       } catch (error: any) {
         const errMsg = error.message || '未知错误'
         const errorLog = `[接口调用出错] QQ${qq}：${errMsg}`
         addLogAndClean(logger, errorLog, config.maxLogCount)
         logger.error(errorLog)
-        return `⚠️  接口调用出错：${errMsg}`
+        // 使用格式化函数发送回复
+        return formatReplyMessage(session, `⚠️  接口调用出错：${errMsg}`, config);
       }
     })
 }
