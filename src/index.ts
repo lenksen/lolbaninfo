@@ -1,6 +1,4 @@
-import { Context, Schema, Logger } from 'koishi' 
-import { sleep } from '@koishijs/utils'
-import {} from '@koishijs/plugin-console'
+import { Context, Schema, Logger, sleep } from 'koishi' 
 
 export const name = 'lolbaninfo'
 
