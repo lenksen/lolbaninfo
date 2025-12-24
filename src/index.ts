@@ -11,27 +11,61 @@ export interface Config {
   maxLogCount: number          // 日志自动清理阈值
 }
 
-export const usage = `
+export const usage = 
+`
 # ⚠️ LOL封号查询插件 ⚠️
-无需密码，直接根据QQ号查询账号封禁状态与详细信息
-# 📢 功能特点
+- **此插件作者只是制作工具，网站API及其内容均与作者无关，请合理使用**
+- 无需密码，直接根据QQ号查询账号封禁状态与详细信息
+
+---
+
+<details>
+<summary><strong><span style="font-size: 1.3em; color: #2a2a2a;">📢 功能特点</span></strong></summary>
+
 - 支持通过QQ号快速查询LOL账号封禁状态
 - 自动重试机制，提高查询成功率
 - 日志自动清理，避免日志过多占用内存
 - 简单易用的指令操作，适合各类用户
-# 🛠️ 配置说明
+
+</details>
+
+<details>
+<summary><strong><span style="font-size: 1.3em; color: #2a2a2a;">🛠️ 配置说明</span></strong></summary>
+
 - apiUrl: 目标网站的API接口地址，通常无需修改
-- apiToken: 网站API的访问Token（注册即可获得）
+- apiToken: 网站API的访问Token（注册即可获得），注册网站：https://yun.4png.com/
 - retryTimes: 请求失败时的最大重试次数，建议设置为2-3次
 - retryDelay: 每次重试的间隔时间（毫秒），建议设置为1000-2000ms
 - maxLogCount: 日志自动清理阈值（最大存储条数），建议设置为100-200条
-# 💡 使用指令
-- 查封号 <qq号>：查询指定QQ号的LOL封禁状态
-# 📄 注意事项
+
+</details>
+
+<details>
+<summary><strong><span style="font-size: 1.3em; color: #2a2a2a;">💡 使用指令</span></strong></summary>
+
+- 查封号+空格+<qq号>：查询指定QQ号的LOL封禁状态
+- 示例：<pre><code>查封号 123456789</code></pre>
+
+</details>
+
+<details>
+<summary><strong><span style="font-size: 1.3em; color: #2a2a2a;">💡 使用指令</span></strong></summary>
+
+- 查封号+空格+<qq号>：查询指定QQ号的LOL封禁状态
+- 示例：<pre><code>查封号 123456789</code></pre>
+
+</details>
+
+<details>
+<summary><strong><span style="font-size: 1.3em; color: #2a2a2a;">📄 注意事项</span></strong></summary>
+
 - 请确保提供的API Token有效且有查询权限
 - 本插件仅供查询封禁状态，请勿用于其他用途
+
+</details>
 `
 
+// ===================== 1. 配置模块 =====================
 export const Config: Schema<Config> = Schema.object({
   apiUrl: Schema.string()
     .description('目标网站的API接口地址')
@@ -66,7 +100,11 @@ const logCache: string[] = []
  * @param content 日志内容
  * @param maxCount 最大日志存储条数
  */
-function addLogAndClean(logger: Logger, content: string, maxCount: number): void {
+function addLogAndClean(
+  logger:Logger, 
+  content: string, 
+  maxCount: number
+): void {
   const formattedLog = `[${new Date().toLocaleString()}] ${content}`
   logCache.push(formattedLog)
 
@@ -82,11 +120,11 @@ function addLogAndClean(logger: Logger, content: string, maxCount: number): void
 // ===================== 3. API请求模块 =====================
 /**
  * 带重试机制的API请求函数（适配GET请求+URL参数）
- * @param ctx Koishi上下文
- * @param config 插件配置
- * @param qq 要查询的QQ号
- * @param logger 插件日志实例（修正类型为 Logger）
- * @returns API返回结果
+ * @param ctx       Koishi上下文
+ * @param config    插件配置
+ * @param qq        要查询的QQ号
+ * @param logger    插件日志实例（修正类型为 Logger）
+ * @returns         API返回结果
  */
 async function requestWithRetry(
   ctx: Context,
