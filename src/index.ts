@@ -77,7 +77,8 @@ export interface Config {
         .default('https://yun.4png.com/api/query.html'),
       apiToken: Schema.string()
         .description('网站API的访问Token（注册即可获得）')
-          .required(),                                              // 需要用户输入的
+        .role('secret')
+        .required(),                                              // 需要用户输入的
       }).description('API 设置'),                                    // API 相关配置的分组描述
     reply: Schema.object({                                         // 回复相关配置分组
       replyMode: Schema.union([

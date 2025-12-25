@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-lolbaninfo",
   "description": "LOL封号查询插件",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lenksen/lolbaninfo.git"
