@@ -146,7 +146,7 @@ async function requestWithRetry(
       
       const status = error.response?.status || '未知状态'
       const errorLog = `API请求失败（第 ${attempt} 次，状态：${status}，错误：${error.message || error.code})`
-      logger.warn(errorLog)
+      logger.error(errorLog)
 
       // 仅对网络错误和5xx服务器错误进行重试
       const isRetryable = status >= 500 || !status || ['ECONNRESET', 'ETIMEDOUT'].includes(error.code)
@@ -201,15 +201,21 @@ export function apply(ctx: Context, config: Config) {
   //创建插件专属日志实例
   const logger = ctx.logger(name)
 
+
   // 指令1：查询QQ号状态
   ctx.command('查封号 <qq号>', '查询QQ号封号状态')
     .action(
       async ({ session }, qq) => {
+        
       // 1. QQ号格式校验
       if (!isValidQQ(qq)) {
         const errorLog = `QQ号格式错误：${qq}`
         logger.warn(errorLog)
-        return formatReplyMessage(session, `❌ QQ号格式错误：${qq}（需5-13位数字）`, config)
+        return formatReplyMessage(
+          session, 
+          `❌ QQ号格式错误：${qq}（需5-13位数字）`, 
+          config
+        )
       }
 
       try {
@@ -225,7 +231,8 @@ export function apply(ctx: Context, config: Config) {
             logger.info(successLog)
             return formatReplyMessage(
               session, 
-              `✅ 查询成功：${msg}\n📝 详细信息：${banInfo}`,
+              `✅ 查询成功：${msg}\n
+               📝 详细信息：${banInfo}`,
                config
               )
 
@@ -250,7 +257,8 @@ export function apply(ctx: Context, config: Config) {
             logger.warn(`请求被拒绝 [403]：频率限制或IP封禁`)
             return formatReplyMessage(
               session,
-              `🛑 请求被拒绝 [403]：可能因查询过于频繁或IP受限\n⏳ 建议稍后再试，或联系 API 提供方`,
+              `🛑 请求被拒绝 [403]：可能因查询过于频繁或IP受限\n
+               ⏳ 建议稍后再试，或联系 API 提供方`,
               config
             )
 
@@ -258,7 +266,16 @@ export function apply(ctx: Context, config: Config) {
             logger.info(`未找到账号 [404]：QQ ${qq} 未绑定LOL账号或无封禁记录`)
             return formatReplyMessage(
               session,
-              `❓ 未找到相关信息 [404]\n📢 QQ ${qq} 可能未绑定《英雄联盟》账号，或当前无封禁记录`,
+              `❓ 未找到相关信息 [404]\n
+               📢 QQ ${qq} 可能未绑定《英雄联盟》账号，或当前无封禁记录`,
+              config
+            )
+
+            case 429:
+            logger.info(`API账号会员已经过期，请付费使用`)
+            return formatReplyMessage(
+              session,
+              `📢 API免费额度使用完毕或账号会员已经过期，请充值后使用`,
               config
             )
 
@@ -266,7 +283,8 @@ export function apply(ctx: Context, config: Config) {
             logger.error(`服务器内部错误 [500]：${msg}`)
             return formatReplyMessage(
               session,
-              `🛠️ 服务器内部错误 [500]：${msg}\n📡 问题出在 API 服务端，请稍后再试`,
+              `🛠️ 服务器内部错误 [500]：${msg}\n
+               📡 问题出在 API 服务端，请稍后再试`,
               config
             )
 
@@ -276,16 +294,17 @@ export function apply(ctx: Context, config: Config) {
             logger.error(`服务不可用 [${result.code}]：${msg}`)
             return formatReplyMessage(
               session,
-              `☁️ 服务暂时不可用 [${result.code}]：${msg}\n🔌 可能是 API 服务维护或超载，请稍后重试`,
+              `☁️ 服务暂时不可用 [${result.code}]：${msg}\n
+               🔌 可能是 API 服务维护或超载，请稍后重试`,
               config
             )
           
           default:
             const unknownLog = `查询失败 [错误码${result.code}]：${msg}`
-            logger.warn(unknownLog)
+            logger.error(unknownLog)
             return formatReplyMessage(
               session,
-              `❗ 收到未知响应码 [${result.code}]：${msg}\n🔍 请检查 API 文档或联系插件作者`,
+              `❗ 收到未知响应码 [${result.code}]：${msg}`,
               config
             )
         }
