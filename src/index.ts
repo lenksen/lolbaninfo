@@ -232,8 +232,7 @@ export function apply(ctx: Context, config: Config) {
             logger.info(successLog)
             return formatReplyMessage(
               session, 
-              `✅ 查询成功：${msg}\n
-               📝 详细信息：${banInfo}`,
+              `✅ 查询成功：${msg}\n📝 详细信息：${banInfo}`,
                config
               )
 
@@ -258,8 +257,7 @@ export function apply(ctx: Context, config: Config) {
             logger.warn(`请求被拒绝 [403]：频率限制或IP封禁`)
             return formatReplyMessage(
               session,
-              `🛑 请求被拒绝 [403]：可能因查询过于频繁或IP受限\n
-               ⏳ 建议稍后再试，或联系 API 提供方`,
+              `🛑 请求被拒绝 [403]：可能因查询过于频繁或IP受限\n⏳ 建议稍后再试，或联系 API 提供方`,
               config
             )
 
@@ -267,8 +265,7 @@ export function apply(ctx: Context, config: Config) {
             logger.info(`未找到账号 [404]：QQ ${qq} 未绑定LOL账号或无封禁记录`)
             return formatReplyMessage(
               session,
-              `❓ 未找到相关信息 [404]\n
-               📢 QQ ${qq} 可能未绑定《英雄联盟》账号，或当前无封禁记录`,
+              `❓ 未找到相关信息 [404]\n📢 QQ ${qq} 可能未绑定《英雄联盟》账号，或当前无封禁记录`,
               config
             )
 
@@ -284,8 +281,7 @@ export function apply(ctx: Context, config: Config) {
             logger.error(`服务器内部错误 [500]：${msg}`)
             return formatReplyMessage(
               session,
-              `🛠️ 服务器内部错误 [500]：${msg}\n
-               📡 问题出在 API 服务端，请稍后再试`,
+              `🛠️ 服务器内部错误 [500]：${msg}\n📡 问题出在 API 服务端，请稍后再试`,
               config
             )
 
@@ -295,8 +291,7 @@ export function apply(ctx: Context, config: Config) {
             logger.error(`服务不可用 [${result.code}]：${msg}`)
             return formatReplyMessage(
               session,
-              `☁️ 服务暂时不可用 [${result.code}]：${msg}\n
-               🔌 可能是 API 服务维护或超载，请稍后重试`,
+              `☁️ 服务暂时不可用 [${result.code}]：${msg}\n🔌 可能是 API 服务维护或超载，请稍后重试`,
               config
             )
           
@@ -316,8 +311,7 @@ export function apply(ctx: Context, config: Config) {
         logger.error(errorLog)
         return formatReplyMessage(
           session, 
-          `⚠️ 查询过程中发生错误\n
-           📡 请检查网络、API 地址及 Token 配置`,
+          `⚠️ 查询过程中发生错误\n📡 请检查网络、API 地址及 Token 配置`,
           config
         )
       }
